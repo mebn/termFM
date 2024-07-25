@@ -10,7 +10,8 @@ import (
 func main() {
 	// go PlayStation("http://rssand.se:4027/;")
 
-	p := tea.NewProgram(initialModel())
+	model := initialModel()
+	p := tea.NewProgram(&model)
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
