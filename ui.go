@@ -43,6 +43,22 @@ type model struct {
 	focusedView   focusedView
 }
 
+func (m *model) updateStations() tea.Cmd {
+	items := []list.Item{}
+	fetchedStudents := goradios.FetchStations(goradios.StationsByCountry, m.countriesView.SelectedItem().FilterValue())
+	for _, station := range fetchedStudents {
+		items = append(items, stationItem{
+			title: station.Name,
+			desc:  fmt.Sprintf("%s, %s", station.Country, station.State),
+			url:   station.URLResolved,
+		})
+	}
+	m.stations[m.countriesView.SelectedItem().FilterValue()] = items
+	cmd := m.stationsView.SetItems(items)
+
+	return cmd
+}
+
 func initialModel() model {
 	// countries
 	items := []list.Item{}
@@ -50,30 +66,25 @@ func initialModel() model {
 	for _, country := range countries {
 		items = append(items, countryItem{title: country.Name, desc: fmt.Sprint(country.StationCount, " stations")})
 	}
+
 	countriesView := list.New(items, list.NewDefaultDelegate(), 0, 0)
+
+	countriesView.Title = "Countries"
+	countriesView.SetShowHelp(false)
 
 	// stations
 	stations := make(map[string][]list.Item)
 
-	countriesView.Title = "Countries"
-	countriesView.SetShowHelp(false)
-	countriesView.Paginator.KeyMap.NextPage.SetEnabled(false)
-	countriesView.Paginator.KeyMap.PrevPage.SetEnabled(false)
-	countriesView.SetShowPagination(false)
-
-	items = []list.Item{}
-	for _, station := range goradios.FetchStations(goradios.StationsByCountry, countriesView.SelectedItem().FilterValue()) {
-		items = append(items, stationItem{title: station.Name, desc: fmt.Sprintf("%s, %s", station.Country, station.State), url: station.URLResolved})
+	stations["Sweden"] = []list.Item{
+		stationItem{title: "marcus", desc: "asd", url: "asdasd"},
 	}
-	stations[countriesView.SelectedItem().FilterValue()] = items
-	stationsView := list.New(stations[countriesView.SelectedItem().FilterValue()], list.NewDefaultDelegate(), 0, 0)
+
+	stationsView := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 
 	stationsView.Title = "Stations"
 	stationsView.SetShowHelp(false)
-	stationsView.Paginator.KeyMap.NextPage.SetEnabled(false)
-	stationsView.Paginator.KeyMap.PrevPage.SetEnabled(false)
 
-	return model{
+	model := model{
 		countriesView: countriesView,
 		stations:      stations,
 		stationsView:  stationsView,
@@ -81,6 +92,10 @@ func initialModel() model {
 		quitting:      false,
 		focusedView:   country,
 	}
+
+	model.updateStations()
+
+	return model
 }
 
 func (m model) Init() tea.Cmd {
@@ -98,23 +113,26 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "right", "l":
-			if m.focusedView == station {
+			if m.focusedView == country {
+				m.focusedView = station
+			} else {
 				m.focusedView = country
 			}
 
 		case "left", "h":
 			if m.focusedView == country {
 				m.focusedView = station
+			} else {
+				m.focusedView = country
 			}
 		}
 
 		// focus on view
+		var cmd tea.Cmd
 		if m.focusedView == country {
-			var cmd tea.Cmd
 			m.countriesView, cmd = m.countriesView.Update(msg)
 			return m, cmd
 		} else if m.focusedView == station {
-			var cmd tea.Cmd
 			m.stationsView, cmd = m.stationsView.Update(msg)
 			return m, cmd
 		}
@@ -124,29 +142,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.stationsView.SetSize(msg.Width, msg.Height)
 	}
 
-	// update stationsView
+	var cmd tea.Cmd
 	val, ok := m.stations[m.countriesView.SelectedItem().FilterValue()]
-
 	if ok {
-		m.stationsView.SetItems(val)
+		cmd = m.stationsView.SetItems(val)
 	} else {
-		items := []list.Item{}
-		stations := goradios.FetchStations(goradios.StationsByCountry, m.countriesView.SelectedItem().FilterValue())
-		for _, station := range stations {
-			items = append(items, stationItem{
-				title: station.Name,
-				desc:  fmt.Sprintf("%s, %s", station.Country, station.State),
-				url:   station.URLResolved,
-			})
-		}
-		m.stations[m.countriesView.SelectedItem().FilterValue()] = items
-		m.stationsView.SetItems(val)
+		cmd = m.updateStations()
 	}
 
 	m.countriesView, cmd1 = m.countriesView.Update(msg)
 	m.stationsView, cmd2 = m.stationsView.Update(msg)
 
-	return m, tea.Batch(cmd1, cmd2)
+	return m, tea.Batch(cmd1, cmd2, cmd)
 }
 
 func (m model) View() string {
