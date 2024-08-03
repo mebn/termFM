@@ -1,4 +1,4 @@
-package main
+package ui
 
 import (
 	"fmt"
@@ -59,7 +59,7 @@ func (m *model) updateStations() tea.Cmd {
 	return cmd
 }
 
-func initialModel() model {
+func InitialModel() model {
 	// countries
 	items := []list.Item{}
 	countries := goradios.FetchCountriesDetailed(goradios.OrderName, false, false)
