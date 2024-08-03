@@ -1,4 +1,4 @@
-module termfm
+module github.com/mebn/termfm
 
 go 1.22.5
 
