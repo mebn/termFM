@@ -9,6 +9,7 @@ import (
 	"github.com/hajimehoshi/oto"
 )
 
+// TODO: fix non-mp3 streams
 func PlayStation(url string) {
 	// Fetch the live audio stream
 	resp, err := http.Get(url)
