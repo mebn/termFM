@@ -9,8 +9,7 @@ import (
 	"gitlab.com/AgentNemo/goradios"
 )
 
-const HowToUse string = `
-Usage: termfm [options]
+const HowToUse string = `Usage: termfm [options]
 A TUI or CLI interface for listening to radio in the terminal.
 If no flags are present, TUI mode will be displayed.
 Flags can be combined, e.g. termfm -nr
@@ -21,12 +20,7 @@ Options:
 	-r : Play a random country and radio station.
 `
 
-type ConfigStatus int
-
-const (
-	ConfigFlagNotFound ConfigStatus = iota
-	ConfigOk
-)
+var FlagNotFoundError = fmt.Errorf("Flag not found.")
 
 type Config struct {
 	Cli    bool
@@ -43,7 +37,7 @@ func NewConfig() Config {
 // Takes the command line arguments, excluding the first entry (os.Args[0]).
 //
 // This function handles all the possible flags the program can take.
-func (c *Config) HandleConfig(args []string) ConfigStatus {
+func (c *Config) HandleConfig(args []string) error {
 	// handle flags
 	for i := range len(args) {
 		if args[i] == "--help" {
@@ -61,12 +55,12 @@ func (c *Config) HandleConfig(args []string) ConfigStatus {
 			case 'r':
 				c.random = true
 			default:
-				return ConfigFlagNotFound
+				return fmt.Errorf("-%c: %w", char, FlagNotFoundError)
 			}
 		}
 	}
 
-	return ConfigOk
+	return nil
 }
 
 // Print help text and exit with status code 0.
