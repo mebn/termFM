@@ -3,6 +3,7 @@ package ui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mebn/termfm/internal/audioplayer"
 )
 
 type countryItem struct {
@@ -35,17 +36,23 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "right", "l":
-			if m.state == countryView {
-				m.state = stationView
+			if m.state == countryState {
+				m.state = stationState
 			} else {
-				m.state = countryView
+				m.state = countryState
 			}
 
 		case "left", "h":
-			if m.state == countryView {
-				m.state = stationView
+			if m.state == countryState {
+				m.state = stationState
 			} else {
-				m.state = countryView
+				m.state = countryState
+			}
+
+		case "enter":
+			if m.state == stationState {
+				station := m.stationsList.SelectedItem().(stationItem)
+				go audioplayer.PlayStation(station.url)
 			}
 		}
 
@@ -55,9 +62,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	var listCmd tea.Cmd
-	if m.state == countryView {
+	if m.state == countryState {
 		m.countriesList, listCmd = m.countriesList.Update(msg)
-	} else if m.state == stationView {
+	} else if m.state == stationState {
 		m.stationsList, listCmd = m.stationsList.Update(msg)
 	}
 
