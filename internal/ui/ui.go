@@ -1,12 +1,8 @@
 package ui
 
 import (
-	"fmt"
-
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"gitlab.com/AgentNemo/goradios"
 )
 
 type countryItem struct {
@@ -26,85 +22,11 @@ func (i stationItem) Title() string       { return i.title }
 func (i stationItem) Description() string { return i.desc }
 func (i stationItem) FilterValue() string { return i.title }
 
-type focusedView int
-
-const (
-	country focusedView = iota
-	station
-	player
-)
-
-type model struct {
-	countriesView list.Model
-	stations      map[string][]list.Item
-	stationsView  list.Model
-	playerView    string
-	quitting      bool
-	focusedView   focusedView
-}
-
-func (m *model) updateStations() tea.Cmd {
-	items := []list.Item{}
-	fetchedStudents := goradios.FetchStations(goradios.StationsByCountry, m.countriesView.SelectedItem().FilterValue())
-	for _, station := range fetchedStudents {
-		items = append(items, stationItem{
-			title: station.Name,
-			desc:  fmt.Sprintf("%s, %s", station.Country, station.State),
-			url:   station.URLResolved,
-		})
-	}
-	m.stations[m.countriesView.SelectedItem().FilterValue()] = items
-	cmd := m.stationsView.SetItems(items)
-
-	return cmd
-}
-
-func InitialModel() model {
-	// countries
-	items := []list.Item{}
-	countries := goradios.FetchCountriesDetailed(goradios.OrderName, false, false)
-	for _, country := range countries {
-		items = append(items, countryItem{title: country.Name, desc: fmt.Sprint(country.StationCount, " stations")})
-	}
-
-	countriesView := list.New(items, list.NewDefaultDelegate(), 0, 0)
-
-	countriesView.Title = "Countries"
-	countriesView.SetShowHelp(false)
-
-	// stations
-	stations := make(map[string][]list.Item)
-
-	stations["Sweden"] = []list.Item{
-		stationItem{title: "marcus", desc: "asd", url: "asdasd"},
-	}
-
-	stationsView := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
-
-	stationsView.Title = "Stations"
-	stationsView.SetShowHelp(false)
-
-	model := model{
-		countriesView: countriesView,
-		stations:      stations,
-		stationsView:  stationsView,
-		playerView:    "prev play/pause next",
-		quitting:      false,
-		focusedView:   country,
-	}
-
-	model.updateStations()
-
-	return model
-}
-
 func (m model) Init() tea.Cmd {
 	return tea.SetWindowTitle("TermFM")
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd1, cmd2 tea.Cmd
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -113,47 +35,35 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "right", "l":
-			if m.focusedView == country {
-				m.focusedView = station
+			if m.state == countryView {
+				m.state = stationView
 			} else {
-				m.focusedView = country
+				m.state = countryView
 			}
 
 		case "left", "h":
-			if m.focusedView == country {
-				m.focusedView = station
+			if m.state == countryView {
+				m.state = stationView
 			} else {
-				m.focusedView = country
+				m.state = countryView
 			}
 		}
 
-		// focus on view
-		var cmd tea.Cmd
-		if m.focusedView == country {
-			m.countriesView, cmd = m.countriesView.Update(msg)
-			return m, cmd
-		} else if m.focusedView == station {
-			m.stationsView, cmd = m.stationsView.Update(msg)
-			return m, cmd
-		}
-
 	case tea.WindowSizeMsg:
-		m.countriesView.SetSize(msg.Width, msg.Height)
-		m.stationsView.SetSize(msg.Width, msg.Height)
+		m.countriesList.SetSize(msg.Width, msg.Height)
+		m.stationsList.SetSize(msg.Width, msg.Height)
 	}
 
-	var cmd tea.Cmd
-	val, ok := m.stations[m.countriesView.SelectedItem().FilterValue()]
-	if ok {
-		cmd = m.stationsView.SetItems(val)
-	} else {
-		cmd = m.updateStations()
+	var listCmd tea.Cmd
+	if m.state == countryView {
+		m.countriesList, listCmd = m.countriesList.Update(msg)
+	} else if m.state == stationView {
+		m.stationsList, listCmd = m.stationsList.Update(msg)
 	}
 
-	m.countriesView, cmd1 = m.countriesView.Update(msg)
-	m.stationsView, cmd2 = m.stationsView.Update(msg)
+	m.updateStations()
 
-	return m, tea.Batch(cmd1, cmd2, cmd)
+	return m, tea.Batch(listCmd)
 }
 
 func (m model) View() string {
@@ -163,9 +73,9 @@ func (m model) View() string {
 
 	topView := lipgloss.JoinHorizontal(
 		lipgloss.Center,
-		m.countriesView.View(),
-		m.stationsView.View(),
+		m.countriesList.View(),
+		m.stationsList.View(),
 	)
 
-	return lipgloss.JoinVertical(lipgloss.Left, topView, m.playerView)
+	return topView
 }
