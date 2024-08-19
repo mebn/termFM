@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -12,15 +13,15 @@ import (
 func main() {
 	// handle potential command line arguments
 	config := cli.NewConfig()
-	configStatus := config.HandleConfig(os.Args[1:])
+	err := config.HandleConfig(os.Args[1:])
 
-	if configStatus != cli.ConfigOk {
-		switch configStatus {
-		case cli.ConfigFlagNotFound:
-			fmt.Fprintln(os.Stderr, "Invalid flag used.")
+	if err != nil {
+		if errors.Is(err, cli.FlagNotFoundError) {
+			fmt.Fprintln(os.Stderr, err)
 		}
 
-		fmt.Fprint(os.Stderr, cli.HowToUse)
+		fmt.Fprint(os.Stderr, "\n", cli.HowToUse, "\n")
+		os.Exit(1)
 	}
 
 	if config.Cli {
@@ -28,7 +29,6 @@ func main() {
 	} else {
 		handleTUI()
 	}
-
 }
 
 func handleTUI() {
