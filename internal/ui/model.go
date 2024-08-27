@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mebn/termfm/internal/audioplayer"
 	"gitlab.com/AgentNemo/goradios"
 )
 
@@ -23,6 +24,7 @@ type model struct {
 	stationsList  list.Model
 	quitting      bool
 	state         focusedView
+	player        audioplayer.AudioPlayer
 }
 
 func InitialModel() model {
@@ -69,6 +71,7 @@ func InitialModel() model {
 		stationsList:  stationsView,
 		quitting:      false,
 		state:         countryState,
+		player:        audioplayer.NewPlayer(),
 	}
 
 	model.updateStations()

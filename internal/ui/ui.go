@@ -3,7 +3,6 @@ package ui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/mebn/termfm/internal/audioplayer"
 )
 
 type countryItem struct {
@@ -52,8 +51,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.state == stationState {
 				station := m.stationsList.SelectedItem().(stationItem)
-				go audioplayer.PlayStation(station.url)
+				go m.player.Play(station.url)
 			}
+
+		case "p":
+			m.player.Stop()
 		}
 
 	case tea.WindowSizeMsg:
