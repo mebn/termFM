@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
+	"time"
 
 	"github.com/mebn/termfm/internal/audioplayer"
 	"gitlab.com/AgentNemo/goradios"
@@ -39,7 +40,7 @@ func NewConfig() Config {
 // This function handles all the possible flags the program can take.
 func (c *Config) HandleConfig(args []string) error {
 	// handle flags
-	for i := range len(args) {
+	for i := range args {
 		if args[i] == "--help" {
 			showHelp()
 		} else if args[i][0] != '-' {
@@ -70,7 +71,16 @@ func showHelp() {
 }
 
 func (c *Config) ShowCLI() {
+	player := audioplayer.NewPlayer()
 	stations := goradios.FetchAllStations()
-	i := rand.IntN(len(stations))
-	audioplayer.PlayStation(stations[i].URLResolved)
+	fmt.Println("starting loop")
+	for {
+		i := rand.IntN(len(stations))
+		if stations[i].Codec != "MP3" {
+			continue
+		}
+		fmt.Println("New station", stations[i].URLResolved)
+		go player.Play(stations[i].URLResolved)
+		time.Sleep(time.Second * 5)
+	}
 }

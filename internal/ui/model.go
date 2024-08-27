@@ -6,14 +6,15 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mebn/termfm/internal/audioplayer"
 	"gitlab.com/AgentNemo/goradios"
 )
 
 type focusedView int
 
 const (
-	countryView focusedView = iota
-	stationView
+	countryState focusedView = iota
+	stationState
 	playerView
 )
 
@@ -23,41 +24,7 @@ type model struct {
 	stationsList  list.Model
 	quitting      bool
 	state         focusedView
-}
-
-func (m *model) updateStations() tea.Cmd {
-	var cmd tea.Cmd
-	items, ok := m.stations[m.countriesList.SelectedItem().FilterValue()]
-
-	if ok {
-		cmd = m.stationsList.SetItems(items)
-	} else {
-		items := []list.Item{}
-		fetchedStudents := goradios.FetchStations(
-			goradios.StationsByCountry,
-			m.countriesList.SelectedItem().FilterValue(),
-		)
-
-		for _, station := range fetchedStudents {
-			var desc string
-			if station.State == "" {
-				desc = station.Country
-			} else {
-				desc = fmt.Sprintf("%s, %s", station.Country, station.State)
-			}
-
-			items = append(items, stationItem{
-				title: station.Name,
-				desc:  desc,
-				url:   station.URLResolved,
-			})
-		}
-
-		m.stations[m.countriesList.SelectedItem().FilterValue()] = items
-		cmd = m.stationsList.SetItems(items)
-	}
-
-	return cmd
+	player        audioplayer.AudioPlayer
 }
 
 func InitialModel() model {
@@ -94,6 +61,7 @@ func InitialModel() model {
 	stationsView := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 
 	stationsView.Title = "Stations"
+	stationsView.SetShowHelp(false)
 	stationsView.KeyMap.PrevPage = key.NewBinding()
 	stationsView.KeyMap.NextPage = key.NewBinding()
 
@@ -102,10 +70,46 @@ func InitialModel() model {
 		stations:      stations,
 		stationsList:  stationsView,
 		quitting:      false,
-		state:         countryView,
+		state:         countryState,
+		player:        audioplayer.NewPlayer(),
 	}
 
 	model.updateStations()
 
 	return model
+}
+
+func (m *model) updateStations() tea.Cmd {
+	var cmd tea.Cmd
+	items, ok := m.stations[m.countriesList.SelectedItem().FilterValue()]
+
+	if ok {
+		cmd = m.stationsList.SetItems(items)
+	} else {
+		items := []list.Item{}
+		fetchedStudents := goradios.FetchStations(
+			goradios.StationsByCountry,
+			m.countriesList.SelectedItem().FilterValue(),
+		)
+
+		for _, station := range fetchedStudents {
+			var desc string
+			if station.State == "" {
+				desc = station.Country
+			} else {
+				desc = fmt.Sprintf("%s, %s", station.Country, station.State)
+			}
+
+			items = append(items, stationItem{
+				title: station.Name,
+				desc:  desc,
+				url:   station.URLResolved,
+			})
+		}
+
+		m.stations[m.countriesList.SelectedItem().FilterValue()] = items
+		cmd = m.stationsList.SetItems(items)
+	}
+
+	return cmd
 }
